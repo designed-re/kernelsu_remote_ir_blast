@@ -2,4 +2,3 @@ __pycache__/
 *.pyc
 logs/
 hub.pid
-ir_codes.json
