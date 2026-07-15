@@ -1,0 +1,9 @@
+{
+  "_comment": "Copy this file to ir_codes.json and paste your extracted IR arrays. Each value can be a comma-separated pattern string, or an object {carrier, pattern}. Pattern = pulse/space microseconds, starts with pulse (mark).",
+
+  "power":      { "carrier": 38000, "pattern": "9044,4498,536,1698,544,571,543,1689" },
+  "turbo":      { "carrier": 38000, "pattern": "9017,4535,531,1703,541,567,541,1711" },
+  "cool_24":    { "carrier": 38000, "pattern": "9044,4498,536,560,536,560,536,1698" },
+  "off":        "9044,4498,536,1698,544,571,543,1689",
+  "demo_nec1":  "9000,4500,560,1690,560,560,560,1690,560,560,560,1690,560,560,560,560,560,39000"
+}
