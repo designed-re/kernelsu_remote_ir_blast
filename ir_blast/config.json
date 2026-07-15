@@ -14,7 +14,10 @@
     "lirc_device": "/dev/lirc0",
     "gpio": 17,
     "active_high": true,
-    "command": "echo \"carrier=$IR_CARRIER timings=$IR_TIMINGS_CSV rawfile=$IR_RAWFILE repeat=$IR_REPEAT\""
+    "command": "echo \"carrier=$IR_CARRIER timings=$IR_TIMINGS_CSV rawfile=$IR_RAWFILE repeat=$IR_REPEAT\"",
+    "ir_spi_device": "/dev/ir_spi",
+    "ir_spi_mode": "auto",
+    "ir_spi_carrier_sysfs": ""
   },
   "daemon": {
     "python": "/data/data/com.termux/files/usr/bin/python3",

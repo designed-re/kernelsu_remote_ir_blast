@@ -46,6 +46,9 @@ LIRC_DEV=$(getval ir.lirc_device); [ -z "$LIRC_DEV" ] && LIRC_DEV=/dev/lirc0
 GPIO=$(getval ir.gpio); [ -z "$GPIO" ] && GPIO=17
 ACTIVE_HIGH=$(getval ir.active_high); [ "$ACTIVE_HIGH" = "false" ] && ACTIVE_HIGH=0 || ACTIVE_HIGH=1
 CMD=$(getval ir.command)
+IR_SPI_DEV=$(getval ir.ir_spi_device); [ -z "$IR_SPI_DEV" ] && IR_SPI_DEV=/dev/ir_spi
+IR_SPI_MODE=$(getval ir.ir_spi_mode); [ -z "$IR_SPI_MODE" ] && IR_SPI_MODE=auto
+IR_SPI_CARRIER_SYSFS=$(getval ir.ir_spi_carrier_sysfs)
 
 # Build env for the command backend
 export IR_CARRIER="$CARRIER"
@@ -65,6 +68,22 @@ usleep_fn() { # sleep N microseconds
 build_irctl_file() {
   OF="$1"
   { echo "carrier $CARRIER"; awk 'NR%2==1{print "pulse "$0} NR%2==0{print "space "$0}' "$RAWFILE"; } > "$OF"
+}
+
+pybin() { command -v python3 >/dev/null 2>&1 && echo python3 || echo python3; }
+# pack raw timings as little-endian u32 array
+pack_u32() { # pack_u32 <rawfile> <mode: us|cycles> <carrier>
+  python3 - "$1" "$2" "$3" <<'PACK_EOF'
+import sys,struct
+raw=open(sys.argv[1]).read().split()
+mode=sys.argv[2]; carrier=int(sys.argv[3]) or 38000
+out=bytearray()
+for x in raw:
+    us=int(round(float(x)))
+    v=round(us*carrier/1000000.0) if mode=='cycles' else us
+    out+=struct.pack('<I', max(0,v)&0xffffffff)
+sys.stdout.buffer.write(bytes(out))
+PACK_EOF
 }
 
 run_repeat() { # run_repeat <shell-cmd-string>
@@ -108,6 +127,58 @@ case "$BACKEND" in
       i=$((i+1))
     done
     exit $rc
+    ;;
+  ir_spi|ir-spi)
+    DEV="$IR_SPI_DEV"
+    if [ ! -w "$DEV" ]; then
+      echo "ir_spi device not writable: $DEV" >&2; log "ir_spi missing $DEV"; exit 6
+    fi
+    # optional carrier via sysfs (some drivers expose a 'carrier' node)
+    if [ -n "$IR_SPI_CARRIER_SYSFS" ] && [ -w "$IR_SPI_CARRIER_SYSFS" ]; then
+      echo "$CARRIER" > "$IR_SPI_CARRIER_SYSFS" 2>/dev/null || true
+    fi
+    spi_send_once() { # $1 = sub-mode
+      m="$1"
+      case "$m" in
+        ir-ctl)
+          TMP="$(mktemp 2>/dev/null || echo /tmp/irspi.$$)"
+          build_irctl_file "$TMP"
+          "$IRCTL" -d "$DEV" --carrier="$CARRIER" --send="$TMP"
+          rc=$?; rm -f "$TMP"; return $rc ;;
+        write-text|text)
+          cat "$RAWFILE" > "$DEV" ;;
+        write-text-space|text-space)
+          tr '\n' ' ' < "$RAWFILE" > "$DEV" ;;
+        write-bin-u32|bin-u32|binary)
+          pack_u32 "$RAWFILE" us "$CARRIER" > "$DEV" ;;
+        write-bin-u32-cycles|bin-u32-cycles|binary-cycles)
+          pack_u32 "$RAWFILE" cycles "$CARRIER" > "$DEV" ;;
+        *)
+          echo "unknown ir_spi mode: $m" >&2; return 2 ;;
+      esac
+    }
+    if [ "$IR_SPI_MODE" = "auto" ]; then
+      found=""
+      for m in ir-ctl write-text write-bin-u32; do
+        if spi_send_once "$m" 2>/dev/null; then found="$m"; break; fi
+      done
+      if [ -z "$found" ]; then
+        echo "ir_spi auto: no sub-mode worked. Run 'ctl.sh probe' and set ir.ir_spi_mode." >&2
+        log "ir_spi auto failed"; exit 7
+      fi
+      i=2
+      while [ "$i" -le "$REPEAT" ]; do spi_send_once "$found" 2>/dev/null || true; i=$((i+1)); done
+      log "ir_spi auto used '$found' carrier=$CARRIER n=$(wc -l <"$RAWFILE")"
+      echo "ir_spi: ok (mode=$found)"; exit 0
+    else
+      rc=0; i=1
+      while [ "$i" -le "$REPEAT" ]; do
+        spi_send_once "$IR_SPI_MODE" || rc=$?
+        i=$((i+1))
+      done
+      log "ir_spi mode=$IR_SPI_MODE dev=$DEV rc=$rc"
+      exit $rc
+    fi
     ;;
   command|*)
     if [ -z "$CMD" ]; then echo "ir.command is empty" >&2; exit 5; fi

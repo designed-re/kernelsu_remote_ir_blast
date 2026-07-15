@@ -32,6 +32,7 @@
         <option value="command">command (사용자 명령)</option>
         <option value="ir-ctl">ir-ctl (LIRC)</option>
         <option value="gpio">gpio (sysfs 비트뱅)</option>
+        <option value="ir-spi">ir-spi (/dev/ir_spi)</option>
       </select>
     </div>
   </div>
@@ -46,6 +47,21 @@
   <div class="row two">
     <div><label>ir-ctl 경로</label><input id="irctl_path" placeholder="ir-ctl"/></div>
     <div><label>LIRC 디바이스</label><input id="lirc_device" placeholder="/dev/lirc0"/></div>
+  </div>
+  <div class="row two">
+    <div><label>ir_spi 디바이스</label><input id="ir_spi_device" placeholder="/dev/ir_spi"/></div>
+    <div><label>ir_spi 모드</label>
+      <select id="ir_spi_mode">
+        <option value="auto">auto (순차 시도)</option>
+        <option value="ir-ctl">ir-ctl (rc-core TX)</option>
+        <option value="write-text">write-text (µs 줄 단위)</option>
+        <option value="write-bin-u32">write-bin-u32 (LE u32 µs)</option>
+        <option value="write-bin-u32-cycles">write-bin-u32-cycles (LE u32 사이클)</option>
+      </select>
+    </div>
+  </div>
+  <div class="row">
+    <div><label>캐리어 sysfs 경로 (선택)</label><input id="ir_spi_carrier_sysfs" placeholder="/sys/.../carrier (비워도 됨)"/></div>
   </div>
   <div class="row two">
     <div><label>GPIO 활성 하이</label>
@@ -72,7 +88,8 @@
   <button id="btn-save">저장</button>
   <button id="btn-restart" class="ghost">재시작</button>
   <button id="btn-stop" class="ghost">정지</button>
-  <button id="btn-test" class="ghost">테스트</button>
+  <button id="btn-probe" class="ghost">ir_spi 조사</button>
+<button id="btn-test" class="ghost">테스트</button>
   <button id="btn-log" class="ghost">로그</button>
 </div>
 

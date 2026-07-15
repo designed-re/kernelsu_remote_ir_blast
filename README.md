@@ -70,6 +70,20 @@ curl -s "http://192.168.1.50/ir?carrier=$IR_CARRIER&t=$IR_TIMINGS_CSV"
 `ir-ctl -d /dev/lirc0 --carrier=38000 --send=<rawfile>` 실행.
 `ir.irctl_path`와 `ir.lirc_device` 설정. v4l-utils 필요.
 
+### ir_spi (/dev/ir_spi)
+커스텀 캐릭터 디바이스(`/dev/ir_spi`)에 직접 송신. 인터페이스를 모를 때:
+
+1. `sh /data/adb/modules/ir_blast/ir_blast/ctl.sh probe`
+   - `ls -l`, major:minor, `/sys/dev/char/M:m` 드라이버, `ir-ctl --features` 출력
+2. 위 결과로 `ir.ir_spi_mode` 선택:
+   - `ir-ctl` — rc-core TX 디바이스일 때(`ir-ctl --features`에 TX 표시)
+   - `write-text` — µs 타이밍을 한 줄에 하나씩 write
+   - `write-bin-u32` — 펄스/스페이스 µs를 little-endian u32 배열로 write
+   - `write-bin-u32-cycles` — µs×carrier/1e6 사이클 수를 LE u32로 write
+   - `auto` — ir-ctl → write-text → write-bin-u32 순차 시도(첫 성공 사용)
+3. `ir.ir_spi_carrier_sysfs`에 캐리어 sysfs 노드 경로를 넣으면 송신 전 캐리어 설정 시도(선택).
+4. WebUI "ir_spi 조사" 버튼 = `ctl.sh probe` 결과를 로그 영역에 표시.
+
 ### gpio
 `/sys/class/gpio/gpioN/value`를 토글. 38kHz 서브캐리어는 쉘에서 생성 불가하므로
 단순 ON/OFF 엔벨로프만 가능(외부 캐리어 하드웨어 필요). `ir.gpio`, `ir.active_high`.

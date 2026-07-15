@@ -29,6 +29,9 @@ const KEYS = [
   ['gpio', 'ir', 'gpio'], ['active_high', 'ir', 'active_high'],
   ['irctl_path', 'ir', 'irctl_path'], ['lirc_device', 'ir', 'lirc_device'],
   ['command', 'ir', 'command'],
+  ['ir_spi_device', 'ir', 'ir_spi_device'],
+  ['ir_spi_mode', 'ir', 'ir_spi_mode'],
+  ['ir_spi_carrier_sysfs', 'ir', 'ir_spi_carrier_sysfs'],
   ['python', 'daemon', 'python'], ['max_body_bytes', 'daemon', 'max_body_bytes'],
 ];
 
@@ -43,6 +46,7 @@ function fillForm(cfg) {
     backend: 'command', carrier: 38000, repeat: 1, timeout_ms: 5000,
     gpio: 17, active_high: true, irctl_path: 'ir-ctl', lirc_device: '/dev/lirc0',
     command: 'echo "carrier=$IR_CARRIER timings=$IR_TIMINGS_CSV rawfile=$IR_RAWFILE repeat=$IR_REPEAT"',
+    ir_spi_device: '/dev/ir_spi', ir_spi_mode: 'auto', ir_spi_carrier_sysfs: '',
     python: '/data/data/com.termux/files/usr/bin/python3', max_body_bytes: 65536,
   };
   for (const [id, sec, key] of KEYS) {
@@ -72,6 +76,9 @@ function readForm() {
       gpio: num('gpio') ?? 17,
       active_high: $('active_high').value === 'true',
       command: $('command').value || '',
+      ir_spi_device: $('ir_spi_device').value || '/dev/ir_spi',
+      ir_spi_mode: $('ir_spi_mode').value || 'auto',
+      ir_spi_carrier_sysfs: $('ir_spi_carrier_sysfs').value || '',
     },
     daemon: {
       python: $('python').value || '/data/data/com.termux/files/usr/bin/python3',
@@ -118,6 +125,13 @@ function stop() {
   refreshStatus();
   showToast('정지됨', 'ok');
 }
+function probe() {
+  const { errno, stdout } = run(`sh ${CTL} probe`);
+  const card = $('logcard');
+  $('logview').textContent = stdout || '(출력 없음)';
+  card.style.display = '';
+  showToast('ir_spi 조사 완료 — 로그 참조');
+}
 function testTx() {
   showToast('테스트 송신 중…');
   const { errno, stdout } = run(`sh ${CTL} test`);
@@ -146,6 +160,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('btn-save').addEventListener('click', saveConfig);
   $('btn-restart').addEventListener('click', restart);
   $('btn-stop').addEventListener('click', stop);
+  $('btn-probe').addEventListener('click', probe);
   $('btn-test').addEventListener('click', testTx);
   $('btn-log').addEventListener('click', toggleLog);
   await loadConfig();

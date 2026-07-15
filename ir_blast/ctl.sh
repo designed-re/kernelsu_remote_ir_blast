@@ -96,17 +96,45 @@ except Exception as e:
   echo "config saved"
 }
 
+probe() {
+  # inspect a character device to help choose ir_spi sub-mode
+  DEV=$(sed -n 's/.*"ir_spi_device"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$CFG" 2>/dev/null | head -n1)
+  [ -z "$DEV" ] && DEV=/dev/ir_spi
+  echo "== device =="
+  ls -l "$DEV" 2>&1
+  mm=$(ls -l "$DEV" 2>/dev/null | sed -n 's/.*, *\([0-9][0-9]*\), *\([0-9][0-9]*\),.*/\1:\2/p')
+  if [ -n "$mm" ]; then
+    echo "major:minor = $mm"
+    SP="/sys/dev/char/$mm"
+    echo "== sysfs $SP =="
+    ls -la "$SP" 2>/dev/null
+    drv=$(readlink -f "$SP/device/driver" 2>/dev/null)
+    [ -n "$drv" ] && echo "driver: $drv"
+    [ -f "$SP/uevent" ] && { echo "-- uevent --"; cat "$SP/uevent" 2>/dev/null; }
+  fi
+  echo "== ir-ctl =="
+  if command -v ir-ctl >/dev/null 2>&1; then
+    ir-ctl -d "$DEV" --features 2>&1 || true
+  else
+    echo "ir-ctl not installed (no rc-core TX probe possible)"
+  fi
+  echo "== hint =="
+  echo "If 'ir-ctl --features' lists TX/carrier, set ir.ir_spi_mode = ir-ctl."
+  echo "Otherwise try write-text or write-bin-u32 (run 'ctl.sh test' to verify)."
+}
+
 case "${1:-}" in
   start) start ;;
   stop) stop ;;
   restart) stop; start ;;
   status) status ;;
   test) test_tx ;;
+  probe) probe ;;
   set-config) set_config ;;
   python) find_python ;;
   ""|-h|--help)
     cat <<USAGE
-Usage: ctl.sh <start|stop|restart|status|test|set-config|python>
+Usage: ctl.sh <start|stop|restart|status|test|probe|set-config|python>
   set-config reads JSON from stdin (e.g.  ctl.sh set-config < config.json)
 USAGE
     ;;
