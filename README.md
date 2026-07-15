@@ -67,6 +67,11 @@ cp boot.sh ~/.termux/boot/ir-hub.sh
 
 ## API
 
+Full reference for humans/AI: [`API.md`](API.md). Machine-readable OpenAPI 3 spec:
+[`openapi.yaml`](openapi.yaml) (import into Swagger/Postman/any AI tool).
+
+## API
+
 인증: `config.json`의 `auth_token`이 비어 있으면 인증 없음(편의). **외부 노출 시
 반드시 토큰 설정**. 토큰은 헤더 `Authorization: Bearer <token>`, `X-Token: <token>`,
 또는 `?token=<token>` 로 전달.

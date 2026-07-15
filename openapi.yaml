@@ -1,0 +1,222 @@
+openapi: 3.0.3
+info:
+  title: Termux IR Hub API
+  version: "1.0.0"
+  description: |
+    HTTP webhook API for an Android device running Termux + Termux:API. Fires IR
+    signals via `termux-infrared-transmit` using pre-extracted raw pulse/space
+    timing arrays (NEC 38kHz). Designed to be driven by home-automation servers
+    (Home Assistant, Node-RED, n8n) or any HTTP/webhook client.
+
+    IR codes live in `ir_codes.json` (key = command name, value = comma-separated
+    pattern or `{carrier, pattern}` object). Patterns are pulse(ON)/space(OFF)
+    microseconds, starting with a pulse, and may include a trailing repeat frame
+    (so the count can be odd — that is normal).
+
+    Auth is OPTIONAL. If `config.json` `auth_token` is non-empty, every request
+    (except GET /health) must carry the token. Supply it via header
+    `Authorization: Bearer <token>`, header `X-Token: <token>`, or query
+    `?token=<token>`.
+
+    Responses are JSON. Transmissions that the device could not actually perform
+    (Play-Store stub Termux:API, permission denial, missing app, bad args) return
+    HTTP 502 with `ok:false` and a diagnostic `output` field — do not treat
+    `ok:false` as a normal failure to retry blindly; inspect `output`.
+servers:
+  - url: http://192.168.31.140:5000
+    description: LAN example (replace with your device IP:port)
+  - url: http://0.0.0.0:5000
+    description: local default
+security:
+  # security is optional: applies only when auth_token is configured
+  - tokenAuth: []
+components:
+  securitySchemes:
+    tokenAuth:
+      type: apiKey
+      in: header
+      name: X-Token
+      description: "Also accepted as `Authorization: Bearer <token>` or `?token=<token>`."
+  schemas:
+    CommandList:
+      type: object
+      properties:
+        ok: { type: boolean, example: true }
+        commands:
+          type: array
+          items: { type: string }
+          example: [power, sleep, turbo, mode, temp_up, temp_down, fan, swing]
+    CommandResult:
+      type: object
+      properties:
+        ok: { type: boolean, description: "true only if IR was actually emitted" }
+        command: { type: string, example: power }
+        carrier: { type: integer, example: 38000 }
+        rc: { type: integer, description: "underlying exit code; 126 = stub/failure marker, 127 = missing, 124 = timeout" }
+        elapsed_ms: { type: integer, example: 516 }
+        output: { type: string, description: "termux-infrared-transmit stdout/stderr (diagnostic). Empty on success." }
+      required: [ok, command, carrier, rc, output]
+    RawIrRequest:
+      type: object
+      properties:
+        carrier:
+          type: integer
+          default: 38000
+          example: 38000
+        pattern:
+          type: string
+          description: comma-separated pulse/space microseconds
+          example: "9000,4500,560,1690,560,560,560,1690,560,560,560,1690,560,560,560,560,560,39000"
+        timings:
+          type: array
+          items: { type: integer }
+          description: alternative to `pattern`; array of pulse/space microseconds
+          example: [9000, 4500, 560, 1690, 560, 560]
+      description: Provide exactly one of `pattern` (string) or `timings` (array). `carrier` is optional (defaults to config default_carrier).
+    RawIrResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        carrier: { type: integer, example: 38000 }
+        rc: { type: integer }
+        output: { type: string }
+      required: [ok, carrier, rc, output]
+    HealthResult:
+      type: object
+      properties:
+        ok: { type: boolean, example: true }
+        service: { type: string, example: termux-ir-hub }
+        codes: { type: integer, example: 8, description: number of configured commands }
+    ReloadResult:
+      type: object
+      properties:
+        ok: { type: boolean, example: true }
+        codes: { type: integer, example: 8 }
+    Error:
+      type: object
+      properties:
+        ok: { type: boolean, example: false }
+        error: { type: string }
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      description: No auth required. Returns service status and number of configured commands.
+      security: []
+      responses:
+        "200":
+          description: alive
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResult" }
+  /ac:
+    get:
+      summary: List available commands
+      description: Returns command names from ir_codes.json (keys starting with `_` are excluded).
+      responses:
+        "200":
+          description: command list
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommandList" }
+        "401": { description: unauthorized, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+  /ac/{command}:
+    get:
+      summary: Fire a named command
+      description: Looks up `command` in ir_codes.json and transmits its IR pattern via `termux-infrared-transmit -f <carrier> <pattern>`.
+      parameters:
+        - in: path
+          name: command
+          required: true
+          schema: { type: string }
+          example: power
+          description: One of the names returned by GET /ac (e.g. power, sleep, turbo, mode, temp_up, temp_down, fan, swing).
+      responses:
+        "200":
+          description: IR emitted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommandResult" }
+              examples:
+                success:
+                  value: { ok: true, command: power, carrier: 38000, rc: 0, elapsed_ms: 516, output: "" }
+        "404":
+          description: unknown command
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              examples:
+                unknown:
+                  value: { ok: false, error: "unknown command: power" }
+        "502":
+          description: transmit failed (stub app / permission / missing)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommandResult" }
+              examples:
+                playstoreStub:
+                  summary: Play-Store stub Termux:API
+                  value:
+                    ok: false
+                    command: power
+                    carrier: 38000
+                    rc: 126
+                    elapsed_ms: 516
+                    output: "Termux:API is not yet available on Google Play - see https://github.com/termux-play-store/termux-apps/issues/29 for updates"
+    post:
+      summary: Fire a named command (POST form)
+      description: Same behavior as GET, convenient for webhooks that only POST.
+      parameters:
+        - in: path
+          name: command
+          required: true
+          schema: { type: string }
+          example: power
+      responses:
+        "200": { description: IR emitted, content: { application/json: { schema: { $ref: "#/components/schemas/CommandResult" } } } }
+        "404": { description: unknown command, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "502": { description: transmit failed, content: { application/json: { schema: { $ref: "#/components/schemas/CommandResult" } } } }
+  /ir:
+    post:
+      summary: Fire ad-hoc raw IR timings
+      description: Transmit an arbitrary raw pattern not stored in ir_codes.json. Provide `pattern` (string) or `timings` (array).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RawIrRequest" }
+            examples:
+              patternString:
+                value: { carrier: 38000, pattern: "9000,4500,560,1690,560,560,560,1690,560,560,560,1690,560,560,560,560,560,39000" }
+              timingsArray:
+                value: { carrier: 38000, timings: [9000, 4500, 560, 1690, 560, 560] }
+      responses:
+        "200":
+          description: IR emitted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RawIrResult" }
+        "400":
+          description: bad request (missing/invalid pattern or carrier)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              examples:
+                missing: { value: { ok: false, error: "pattern/timings required" } }
+                badCarrier: { value: { ok: false, error: "bad carrier" } }
+        "502":
+          description: transmit failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RawIrResult" }
+  /reload:
+    post:
+      summary: Reload ir_codes.json
+      description: Re-read ir_codes.json from disk so edited codes take effect without restarting the server. (Auth required if configured.)
+      responses:
+        "200":
+          description: reloaded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReloadResult" }
+        "401": { description: unauthorized, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
