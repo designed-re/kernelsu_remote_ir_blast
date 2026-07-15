@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Remote IR Blaster</title>
+<link rel="icon" href="icon.svg"/>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<h1><img src="icon.svg" alt=""/> Remote IR Blaster</h1>
+<p class="sub" id="status">상태: 확인 중…</p>
+
+<div class="card">
+  <h2>HTTP 서버</h2>
+  <div class="row two">
+    <div><label>Host</label><input id="host" placeholder="0.0.0.0"/></div>
+    <div><label>Port</label><input id="port" type="number" placeholder="8424"/></div>
+  </div>
+  <div class="row two">
+    <div><label>인증 헤더 이름</label><input id="auth_header" placeholder="X-IR-Token"/></div>
+    <div><label>인증 헤더 값</label><input id="auth_value" type="text" placeholder="change-me"/></div>
+  </div>
+  <p class="hint">모든 요청은 이 헤더가 정확히 일치해야 합니다. 예) <code>X-IR-Token: 비밀값</code></p>
+</div>
+
+<div class="card">
+  <h2>IR 송신 백엔드</h2>
+  <div class="row">
+    <div><label>백엔드</label>
+      <select id="backend">
+        <option value="command">command (사용자 명령)</option>
+        <option value="ir-ctl">ir-ctl (LIRC)</option>
+        <option value="gpio">gpio (sysfs 비트뱅)</option>
+      </select>
+    </div>
+  </div>
+  <div class="row two">
+    <div><label>기본 캐리어(Hz)</label><input id="carrier" type="number" placeholder="38000"/></div>
+    <div><label>반복 횟수</label><input id="repeat" type="number" placeholder="1"/></div>
+  </div>
+  <div class="row two">
+    <div><label>송신 타임아웃(ms)</label><input id="timeout_ms" type="number" placeholder="5000"/></div>
+    <div><label>GPIO 번호</label><input id="gpio" type="number" placeholder="17"/></div>
+  </div>
+  <div class="row two">
+    <div><label>ir-ctl 경로</label><input id="irctl_path" placeholder="ir-ctl"/></div>
+    <div><label>LIRC 디바이스</label><input id="lirc_device" placeholder="/dev/lirc0"/></div>
+  </div>
+  <div class="row two">
+    <div><label>GPIO 활성 하이</label>
+      <select id="active_high"><option value="true">true</option><option value="false">false</option></select>
+    </div>
+  </div>
+  <div class="row">
+    <div><label>command (command 백엔드)</label>
+      <textarea id="command" placeholder="curl -s http://192.168.1.50/ir --data-urlencode &quot;c=$IR_CARRIER&quot; --data-urlencode &quot;t=$IR_TIMINGS_CSV&quot;"></textarea>
+    </div>
+  </div>
+  <p class="hint">command 백엔드에 전달되는 환경변수: <code>$IR_CARRIER $IR_REPEAT $IR_TIMINGS $IR_TIMINGS_CSV $IR_RAWFILE</code></p>
+</div>
+
+<div class="card">
+  <h2>데몬</h2>
+  <div class="row two">
+    <div><label>Python 경로</label><input id="python" placeholder="/data/data/com.termux/files/usr/bin/python3"/></div>
+    <div><label>최대 본문(bytes)</label><input id="max_body_bytes" type="number" placeholder="65536"/></div>
+  </div>
+</div>
+
+<div class="bar">
+  <button id="btn-save">저장</button>
+  <button id="btn-restart" class="ghost">재시작</button>
+  <button id="btn-stop" class="ghost">정지</button>
+  <button id="btn-test" class="ghost">테스트</button>
+  <button id="btn-log" class="ghost">로그</button>
+</div>
+
+<div class="card" id="logcard" style="display:none">
+  <h2>로그 (최근 200줄)</h2>
+  <pre class="log" id="logview"></pre>
+</div>
+
+<div class="card" id="helphint">
+  <h2>사용법</h2>
+  <p class="hint">POST <code>/ir</code> 본문:<br>
+  <code>{"carrier":38000,"repeat":1,"timings":[9000,4500,560,560,...]}</code><br>
+  timings = 펄스(ON)/스페이스(OFF) 마이크로초, 짝수 개, 첫 값은 펄스.<br>
+  헤더에 인증 값 필수.</p>
+</div>
+
+<div id="toast" class="toast"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

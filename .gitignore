@@ -1,0 +1,20 @@
+# logs / runtime artifacts
+*.log
+/logs/
+/ir_blast/logs/
+ir_blast/logs/
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+
+# build output
+*.zip
+*.sig
+
+# editor
+.DS_Store
+*.swp
+.idea/
+.vscode/

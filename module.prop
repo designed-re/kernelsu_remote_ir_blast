@@ -1,0 +1,9 @@
+id=ir_blast
+name=Remote IR Blaster
+version=v1.0.0
+versionCode=1
+author=user
+description=HTTP-triggered IR blaster. Runs an authenticated HTTP server that transmits raw-timing IR signals via a configurable backend (custom command / ir-ctl / GPIO). Configurable via KernelSU WebUI.
+updateJson=
+actionIcon=/webroot/icon.svg
+webuiIcon=/webroot/icon.svg

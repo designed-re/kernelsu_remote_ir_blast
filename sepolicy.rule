@@ -1,0 +1,13 @@
+# KernelSU sepolicy rules for Remote IR Blaster daemon (runs as root in su domain)
+# Binding TCP port (incl. privileged <1024) from the su-spawned daemon
+allow su self capability net_bind_service;
+allow su self capability net_admin;
+allow su port tcp_socket name_bind;
+allow su node tcp_socket node_bind;
+
+# Access to IR transmitter character devices. NOTE: type names differ per
+# device/kernel. If your backend needs /dev/lirc0 or a gpio sysfs node and you get
+# permission denied, add a matching rule here, e.g.:
+#   allow su lirc_device chr_file rw_file_perms;
+#   allow su gpio_device chr_file rw_file_perms;
+#   allow su sysfs file rw_file_perms;

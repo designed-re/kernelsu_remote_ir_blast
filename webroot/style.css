@@ -1,0 +1,27 @@
+:root{--bg:#0b1220;--card:#111c2e;--fg:#e6edf6;--muted:#93a4bd;--acc:#38bdf8;--ok:#22c55e;--err:#ef4444;--bd:#1e2b42}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px 16px 80px}
+h1{font-size:18px;margin:8px 0 2px;display:flex;align-items:center;gap:10px}
+h1 img{width:28px;height:28px}
+.sub{color:var(--muted);margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px 14px 16px;margin-bottom:14px}
+.card h2{font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 10px}
+.row{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:10px}
+.row.two{grid-template-columns:1fr 1fr}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+input,select,textarea{width:100%;background:#0c1729;color:var(--fg);border:1px solid var(--bd);border-radius:8px;padding:9px 10px;font:inherit}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc)}
+textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;resize:vertical;min-height:90px}
+.hint{font-size:11px;color:var(--muted);margin-top:4px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;position:sticky;bottom:0;background:linear-gradient(0deg,var(--bg) 75%,transparent);padding:10px 0}
+button{flex:1;min-width:90px;background:var(--acc);color:#06283d;border:none;border-radius:10px;padding:11px 12px;font-weight:600;font-size:14px}
+button.ghost{background:#1a2740;color:var(--fg);border:1px solid var(--bd)}
+button:active{transform:translateY(1px)}
+.toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);background:#04121f;border:1px solid var(--bd);color:var(--fg);padding:10px 14px;border-radius:10px;font-size:13px;z-index:30;max-width:90%;box-shadow:0 8px 30px rgba(0,0,0,.5);opacity:0;transition:opacity .2s,top .2s;pointer-events:none}
+.toast.show{opacity:1;top:24px}
+.toast.err{border-color:var(--err)}
+.toast.ok{border-color:var(--ok)}
+pre.log{white-space:pre-wrap;word-break:break-word;background:#060d18;border:1px solid var(--bd);border-radius:8px;padding:10px;max-height:240px;overflow:auto;font:11px/1.4 ui-monospace,Menlo,Consolas,monospace;color:#bcd3f0}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:#1a2740;border:1px solid var(--bd)}
+.badge.on{color:var(--ok);border-color:#163b27}
+.badge.off{color:var(--err);border-color:#3a1414}

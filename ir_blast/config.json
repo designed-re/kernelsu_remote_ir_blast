@@ -1,0 +1,23 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8424,
+    "auth_header": "X-IR-Token",
+    "auth_value": "change-me-please"
+  },
+  "ir": {
+    "backend": "command",
+    "carrier": 38000,
+    "repeat": 1,
+    "timeout_ms": 5000,
+    "irctl_path": "ir-ctl",
+    "lirc_device": "/dev/lirc0",
+    "gpio": 17,
+    "active_high": true,
+    "command": "echo \"carrier=$IR_CARRIER timings=$IR_TIMINGS_CSV rawfile=$IR_RAWFILE repeat=$IR_REPEAT\""
+  },
+  "daemon": {
+    "python": "/data/data/com.termux/files/usr/bin/python3",
+    "max_body_bytes": 65536
+  }
+}
