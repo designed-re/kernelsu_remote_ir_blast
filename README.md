@@ -1,3 +1,13 @@
+<h1 align="center">⚠️ 사용 중단 경고 ⚠️</h1>
+
+<h1 align="center">이 모듈은 휴대폰을 부팅 불가(unbootable) 상태로 만들 수 있습니다</h1>
+
+<h2 align="center"><b>사용하지 마십시오.</b> 휴대폰이 벽돌이 될 수 있으며, 그에 따른 모든 책임은 본인에게 있습니다.</h2>
+
+<h2 align="center">🚫 Do NOT use. This can brick / make your phone unbootable. You have been warned. 🚫</h2>
+
+---
+
 # Remote IR Blaster (KernelSU module)
 
 HTTP 요청으로 raw IR timings(pulse/space 마이크로초)를 송신하는 KernelSU 모듈.
