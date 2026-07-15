@@ -121,22 +121,46 @@ def resolve_code(name):
     return carrier, pattern
 
 
+# Output fragments that mean the transmission did NOT actually happen even if
+# the command exits 0 (e.g. the Play Store build of Termux:API is a stub).
+FAIL_MARKERS = (
+    "Termux:API is not yet available on Google Play",
+    "is not available on Google Play",
+    "termux-infrared-transmit: ",   # usage/help printed on bad args
+    "Permission Denial",
+    "JavaException",
+    "Error: Activity class",
+    "does not have permission",
+    "not found",                     # command/bin missing
+    "No such file or directory",
+)
+
+
 def fire_ir(carrier, pattern):
-    """Run termux-infrared-transmit -f <carrier> <pattern>. Returns (rc, output)."""
+    """Run termux-infrared-transmit -f <carrier> <pattern>.
+    Returns (rc, output, ok) where ok is False when known failure markers
+    appear in output (Play Store stub, missing app, permission denial, ...)."""
     cmd_path = cfg("ir_command", default="termux-infrared-transmit") or "termux-infrared-transmit"
     timeout = int(cfg("transmit_timeout", default=8) or 8)
     if not pattern:
-        return 1, "empty pattern"
+        return 1, "empty pattern", False
     cmd = [cmd_path, "-f", str(int(carrier)), pattern]
     with _lock:
         try:
             p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
             out = (p.stdout or "") + (p.stderr or "")
-            return p.returncode, out
         except FileNotFoundError:
-            return 127, ("command not found: %s. Install Termux:API + `pkg install termux-api`" % cmd_path)
+            return 127, ("command not found: %s. Install the Termux:API app "
+                         "(F-Droid) and `pkg install termux-api`." % cmd_path), False
         except subprocess.TimeoutExpired:
-            return 124, "transmit timed out"
+            return 124, "transmit timed out", False
+    ok = (p.returncode == 0) and not any(m in out for m in FAIL_MARKERS)
+    if not ok and p.returncode == 0:
+        # surface a synthetic rc so callers report failure status
+        p_return = 126
+    else:
+        p_return = p.returncode
+    return p_return, out, ok
 
 
 @app.before_request
@@ -167,10 +191,10 @@ def fire_command(command):
     if pattern is None:
         return jsonify({"ok": False, "error": "unknown command: %s" % command}), 404
     t0 = time.monotonic()
-    rc, out = fire_ir(carrier, pattern)
+    rc, out, ok = fire_ir(carrier, pattern)
     elapsed = int((time.monotonic() - t0) * 1000)
-    status = 200 if rc == 0 else 502
-    return jsonify({"ok": rc == 0, "command": command, "carrier": carrier,
+    status = 200 if ok else 502
+    return jsonify({"ok": ok, "command": command, "carrier": carrier,
                     "rc": rc, "elapsed_ms": elapsed, "output": out[-500:]}), status
 
 
@@ -198,8 +222,8 @@ def fire_raw():
         pattern = ",".join(p.strip() for p in str(pat or "").split(",") if p.strip()) if pat else ""
     if not pattern:
         return jsonify({"ok": False, "error": "pattern/timings required"}), 400
-    rc, out = fire_ir(carrier, pattern)
-    return jsonify({"ok": rc == 0, "carrier": carrier, "rc": rc, "output": out[-500:]}), (200 if rc == 0 else 502)
+    rc, out, ok = fire_ir(carrier, pattern)
+    return jsonify({"ok": ok, "carrier": carrier, "rc": rc, "output": out[-500:]}), (200 if ok else 502)
 
 
 @app.route("/reload", methods=["POST"])
